@@ -38,10 +38,7 @@ const callOpenAI = async (userMessage) => {
 
 const PORT = process.env.PORT ?? 3000
 
-adapterProvider.server.get('/', (req, res) => {
-    // Redirige a la ruta /qr
-    res.redirect('/qr');
-});
+
 
 const busquedaEmpleo = addKeyword('empleo').addAnswer(
     ['Perfecto! Cuentame un poco más de ti, ¿De qué carrera eres egresado?'])
@@ -116,6 +113,11 @@ const main = async () => {
         database: adapterDB,
     })
 
+    adapterProvider.server.get('/', (req, res) => {
+        // Redirige a la ruta /qr
+        res.redirect('/qr');
+    });
+    
     adapterProvider.server.post(
         '/v1/messages',
         handleCtx(async (bot, req, res) => {
