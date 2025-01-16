@@ -113,7 +113,7 @@ const main = async () => {
         database: adapterDB,
     })
 
-    adapterProvider.server.post('/', (req, res) => {
+    adapterProvider.server.get('/', (req, res) => {
 
         const qrImagePath =  'bot.qr.png';
        
