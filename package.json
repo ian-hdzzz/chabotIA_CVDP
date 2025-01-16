@@ -13,7 +13,8 @@
   "dependencies": {
     "@builderbot/bot": "1.2.4",
     "@builderbot/provider-baileys": "1.2.4",
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
