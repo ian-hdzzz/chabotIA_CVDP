@@ -1,41 +1,81 @@
 import { join } from 'path'
 import { createBot, createProvider, createFlow, addKeyword, utils } from '@builderbot/bot'
 import { MemoryDB as Database } from '@builderbot/bot'
-import { MetaProvider as Provider } from '@builderbot/provider-meta'
+import { BaileysProvider as Provider } from '@builderbot/provider-baileys'
+import axios from 'axios';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const PORT = process.env.PORT ?? 3008
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const callOpenAI = async (userMessage) => {
+    const data = JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+            { role: "system", content: "You are a helpful assistant." },
+            { role: "user", content: userMessage },
+        ],
+    });
 
-const discordFlow = addKeyword('doc').addAnswer(
-    ['You can see the documentation here', '📄 https://builderbot.app/docs \n', 'Do you want to continue? *yes*'].join(
-        '\n'
-    ),
-    { capture: true },
-    async (ctx, { gotoFlow, flowDynamic }) => {
-        if (ctx.body.toLocaleLowerCase().includes('yes')) {
-            return gotoFlow(registerFlow)
-        }
-        await flowDynamic('Thanks!')
-        return
+    const config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://api.openai.com/v1/chat/completions',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`,
+        },
+        data: data,
+    };
+
+    try {
+        const response = await axios(config);
+        return response.data.choices[0].message.content;
+    } catch (error) {
+        console.error("Error with OpenAI API:", error.message);
+        return "Lo siento, hubo un problema al procesar tu solicitud.";
     }
-)
+};
+const PORT = process.env.PORT ?? 3000
 
+const busquedaEmpleo = addKeyword('empleo').addAnswer(
+    ['Perfecto! Cuentame un poco más de ti, ¿De qué carrera eres egresado?'])
+    .addAnswer()
+
+const aiFlow = addKeyword('IA').addAnswer(
+    '¿Qué quieres preguntar? (escribe tu consulta):',
+    { capture: true },
+    async (ctx, { flowDynamic }) => {
+        
+        await flowDynamic('Procesando tu solicitud, por favor espera unos segundos...');
+
+        const userMessage = ctx.body; // Mensaje del usuario
+        const aiResponse = await callOpenAI(userMessage); // Llama a OpenAI
+        await flowDynamic(aiResponse); // Responde con la respuesta de OpenAI
+    }
+);
 const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
-    .addAnswer(`🙌 Hello welcome to this *Chatbot*`)
+    .addAnswer('¡Hola, bienvenido! Soy el asistente de Inteligencia Artificial del CVDP Campus Querétaro y estoy aqui para ayudarte 😉 ')
     .addAnswer(
         [
-            'I share with you the following links of interest about the project',
-            '👉 *doc* to view the documentation',
+            '¿En qué puedo ayudarte el día de hoy?',
+            '\n1. Búsqueda de empleo escribe 👉 *empleo*',
+            '2. Prácticas profesionales escribe 👉 *prácticas*',
+            '3. Preparación para entrevista escribe 👉 *entrevista*',
+            '4. Revisión de CV escribe 👉 *CV*',
+            '5. Hablar con un asesor escribe 👉 *asesor*',
+            '6. Utilizar asistente IA escribe 👉 *IA*',
         ].join('\n'),
         { delay: 800, capture: true },
         async (ctx, { fallBack }) => {
-            if (!ctx.body.toLocaleLowerCase().includes('doc')) {
-                return fallBack('You should type *doc*')
+            if (!ctx.body.toLocaleLowerCase().includes('ia' || 'empleo' || 'prácticas' || 'practicas' || 'entrevista' || 'CV' ||'asesor' || 'IA')) {
+                return fallBack('Elije una de las opciones mencionadas anteriormente ')
             }
             return
         },
-        [discordFlow]
+        [aiFlow]
     )
 
+      
 const registerFlow = addKeyword(utils.setEvent('REGISTER_FLOW'))
     .addAnswer(`What is your name?`, { capture: true }, async (ctx, { state }) => {
         await state.update({ name: ctx.body })
@@ -59,13 +99,9 @@ const fullSamplesFlow = addKeyword(['samples', utils.setEvent('SAMPLES')])
     })
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, registerFlow, fullSamplesFlow])
-    const adapterProvider = createProvider(Provider, {
-        jwtToken: 'jwtToken',
-        numberId: 'numberId',
-        verifyToken: 'verifyToken',
-        version: 'v18.0'
-    })
+    const adapterFlow = createFlow([welcomeFlow, registerFlow, fullSamplesFlow,aiFlow   ])
+    
+    const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()
 
     const { handleCtx, httpServer } = await createBot({
