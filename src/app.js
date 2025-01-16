@@ -114,30 +114,16 @@ const main = async () => {
     })
 
     adapterProvider.server.get('/', (req, res) => {
-
-        // const qrImagePath =  'bot.qr.png';
+        
+        const qrImagePath =  'bot.qr.png';
+        // Enviar la imagen como respuesta
+        res.sendFile(qrImagePath, (err) => {
+            if (err) {
+                console.log('Error al enviar la imagen:', err);
+                return res.status(500).send('Error al procesar la imagen');
+            }
+        });
        
-        // // Enviar la imagen como respuesta
-        // res.sendFile(qrImagePath, (err) => {
-        //     if (err) {
-        //         console.log('Error al enviar la imagen:', err);
-        //         return res.status(500).send('Error al procesar la imagen');
-        //     }
-        // });
-        // const htmlContent = `
-        // <html>
-        //     <head>
-        //         <title>QR Image</title>
-        //     </head>
-        //     <body>
-        //         <h1>Imagen QR generada</h1>
-        //         <img src="/assets/qr.png" alt="QR Code" />
-        //     </body>
-        // </html>
-        // `;
-    
-        // res.send(htmlContent); 
-        res.send('Hola');
     });
 
     adapterProvider.server.post(
