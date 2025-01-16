@@ -35,7 +35,13 @@ const callOpenAI = async (userMessage) => {
         return "Lo siento, hubo un problema al procesar tu solicitud.";
     }
 };
+
 const PORT = process.env.PORT ?? 3000
+
+adapterProvider.server.get('/', (req, res) => {
+    // Redirige a la ruta /qr
+    res.redirect('/qr');
+});
 
 const busquedaEmpleo = addKeyword('empleo').addAnswer(
     ['Perfecto! Cuentame un poco más de ti, ¿De qué carrera eres egresado?'])
@@ -148,7 +154,7 @@ const main = async () => {
             return res.end(JSON.stringify({ status: 'ok', number, intent }))
         })
     )
-
+   
     httpServer(+PORT)
 }
 
