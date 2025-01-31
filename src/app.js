@@ -8,6 +8,7 @@ dotenv.config();
 
 // Conexión con OPEN AI
 const openaiApiKey = process.env.OPENAI_API_KEY;
+
 const callOpenAI = async (userMessage) => {
     const data = JSON.stringify({
         model: "gpt-4o-mini",
@@ -37,7 +38,7 @@ const callOpenAI = async (userMessage) => {
     }
 };
 
-const PORT = process.env.PORT ?? 3000
+const PORT = process.env.PORT 
 
 
 let respuestasEmpleo = []
