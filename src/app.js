@@ -6,6 +6,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Conexión con OPEN AI
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const callOpenAI = async (userMessage) => {
     const data = JSON.stringify({
@@ -39,13 +40,77 @@ const callOpenAI = async (userMessage) => {
 const PORT = process.env.PORT ?? 3000
 
 
+let respuestasEmpleo = []
+let currentFlow = null; 
 
-const busquedaEmpleo = addKeyword('empleo').addAnswer(
-    ['Perfecto! Cuentame un poco más de ti, ¿De qué carrera eres egresado?'])
+const empleo = addKeyword('empleo').
+    addAnswer('Perfecto! Cuentame un poco más de ti, ¿De qué carrera eres egresado?',
+    {delay:800, capture:true},
+    async (ctx, {fallBack, flowDynamic})=> {
+        currentFlow = 'empleo'; 
+        respuestasEmpleo.push(ctx.body); // Guarda la primera respuesta
+        await flowDynamic('Genial, ahora cuéntame, ¿En qué industira en específico te gustaría aplicar tu conocimientos de dicha carrera?');
+    })
+    .addAnswer(
+        null, // No repite el mensaje anterior
+        { delay: 800, capture: true },
+        async (ctx, { flowDynamic }) => {
+            if (currentFlow !== 'empleo') return; 
+            respuestasEmpleo.push(ctx.body); // Guarda la segunda respuesta
+            await flowDynamic('Interesante, ¿En que ciudad/estado/país te gustaría obtener ese trabajo?');
+        }
+    )
+    .addAnswer(
+        null,
+        { delay: 800, capture: true },
+        async (ctx, { flowDynamic }) => {
+            if (currentFlow !== 'empleo') return; 
+            respuestasEmpleo.push(ctx.body); // Guarda la quinta respuesta
+    
+            // Crea una oración con las respuestas recolectadas
+            const mensajeFinal = `¡Increible! Ahora puedes copiar el siguiente promt en nuestra herramienta de IA seleccionando la opción o en su defecto utilizar alguna de tu preferencia.
+            \n- Utilizando LINKEDIN,  genera una lista de 5 empresas en ${respuestasEmpleo[2]} que ofrezcan la vacante ${respuestasEmpleo[0]}  en el sector ${respuestasEmpleo[1]}.`
+                
+            // Envía la respuesta final
+            await flowDynamic(mensajeFinal);
+        
+            // Limpia el array para futuras conversaciones
+            respuestasEmpleo = [];
+        }
+    );
+
+const practicas = addKeyword('practicas').addAnswer(
+    ['Perfecto! Cuentame un poco más de ti, ¿Que carrera estás estudiando?'])
+    .addAnswer()
+
+const entrevista = addKeyword('entrevista').addAnswer(
+    ['Perfecto! Te presento a nuestro equipo de trabajo con quien podras agendar una cita para tu simulación de entrevista'])
+    .addAnswer('Stephano Loza',{
+        media: './public/img/stephano.png'
+    })
+    .addAnswer(['Coordinador de empleabilidad','Asesoría, atención a alumnos para empleo y atención a empresas'])
+    
+    .addAnswer('Clemente Garcia',{
+        media: './public/img/clemente.png'
+    })
+    .addAnswer(['Coordinador de Desarrollo de Talento','Asesoría, atención a alumnos para empleo y atención a empresas'])
+
+    .addAnswer('Lisbeth Sevilla',{
+        media: './public/img/lis.png'
+    })
+    .addAnswer(['Coordinadora de Experiencia Profesional','Asesoría, atención a alumnos para prácticas voluntarias y estancias profesionales'])
+    .addAnswer('¿Con quién de nuestros especialistas te gustaría tomar tu simulación de entrevista, Stephano, Clemente o Lisbeth?')
+
+const cv = addKeyword('cv').addAnswer(
+    ['Perfecto! Cuentame en que parte del proceso estas...'])
+    .addAnswer('¿Empezando, intermedio o solo requieres una revisión?')
+
+const asesor = addKeyword('asesor').addAnswer(
+    ['Tus deseos son ordenes, ¿hay alguien en especifico a quien te gustaría contactar?'])
     .addAnswer()
 
 const aiFlow = addKeyword('IA').addAnswer(
-    '¿Qué quieres preguntar? (escribe tu consulta):',
+    'Ahora estas utilizando la herramienta de IA del CVDP \n ¿Qué deseas preguntar? (escribe tu consulta):',
     { capture: true },
     async (ctx, { flowDynamic }) => {
         
@@ -56,8 +121,11 @@ const aiFlow = addKeyword('IA').addAnswer(
         await flowDynamic(aiResponse); // Responde con la respuesta de OpenAI
     }
 );
-const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
-    .addAnswer('¡Hola, bienvenido! Soy el asistente de Inteligencia Artificial del CVDP Campus Querétaro y estoy aqui para ayudarte 😉 ')
+
+
+
+const welcomeFlow = addKeyword(['hi', 'hello', 'hola', 'opciones'])
+    .addAnswer('¡Hola, bienvenido! Soy el asistente de IA del CVDP Campus Querétaro y estoy aqui para ayudarte 😉 ')
     .addAnswer(
         [
             '¿En qué puedo ayudarte el día de hoy?',
@@ -66,43 +134,33 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
             '3. Preparación para entrevista escribe 👉 *entrevista*',
             '4. Revisión de CV escribe 👉 *CV*',
             '5. Hablar con un asesor escribe 👉 *asesor*',
-            '6. Utilizar asistente IA escribe 👉 *IA*',
-        ].join('\n'),
+            '6.Utilizar asistente IA escribe 👉 *IA*',
+            '\nSi ya estas en una sección y te gustaría explorar alguna otra, solo escribe *opciones* para volver a mostrarte el menu'
+        ],
         { delay: 800, capture: true },
         async (ctx, { fallBack }) => {
-            if (!ctx.body.toLocaleLowerCase().includes('ia' || 'empleo' || 'prácticas' || 'practicas' || 'entrevista' || 'CV' ||'asesor' || 'IA')) {
-                return fallBack('Elije una de las opciones mencionadas anteriormente ')
+            if (ctx.body.includes('ia')) {
+                return
+            }else if (ctx.body.includes('empleo')){
+                return
+            }else if (ctx.body.includes('practicas')){
+                return
+            }else if (ctx.body.includes('entrevista')){
+                return
+            }else if (ctx.body.includes('cv')){
+                return
+            }else if (ctx.body.includes('asesor')){
+                return
+            }else{
+                fallBack('Elije una de las opciones mencionadas anteriormente ')
             }
-            return
         },
-        [aiFlow]
+        [empleo, practicas, entrevista, cv, asesor, aiFlow],
     )
-
-      
-const registerFlow = addKeyword(utils.setEvent('REGISTER_FLOW'))
-    .addAnswer(`What is your name?`, { capture: true }, async (ctx, { state }) => {
-        await state.update({ name: ctx.body })
-    })
-    .addAnswer('What is your age?', { capture: true }, async (ctx, { state }) => {
-        await state.update({ age: ctx.body })
-    })
-    .addAction(async (_, { flowDynamic, state }) => {
-        await flowDynamic(`${state.get('name')}, thanks for your information!: Your age: ${state.get('age')}`)
-    })
-
-const fullSamplesFlow = addKeyword(['samples', utils.setEvent('SAMPLES')])
-    .addAnswer(`💪 I'll send you a lot files...`)
-    .addAnswer(`Send image from Local`, { media: join(process.cwd(), 'assets', 'sample.png') })
-    .addAnswer(`Send video from URL`, {
-        media: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYTJ0ZGdjd2syeXAwMjQ4aWdkcW04OWlqcXI3Ynh1ODkwZ25zZWZ1dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LCohAb657pSdHv0Q5h/giphy.mp4',
-    })
-    .addAnswer(`Send audio from URL`, { media: 'https://cdn.freesound.org/previews/728/728142_11861866-lq.mp3' })
-    .addAnswer(`Send file from URL`, {
-        media: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    })
+  
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, registerFlow, fullSamplesFlow,aiFlow   ])
+    const adapterFlow = createFlow([welcomeFlow])
     
     const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()
@@ -116,6 +174,7 @@ const main = async () => {
     adapterProvider.server.get('/', (req, res) => {
         
         const qrImagePath =  'bot.qr.png';
+
         // Enviar la imagen como respuesta
         res.sendFile(qrImagePath, (err) => {
             if (err) {
